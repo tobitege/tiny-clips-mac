@@ -265,7 +265,6 @@ private class TrimmerViewModel: ObservableObject {
         self.asset = asset
         let item = AVPlayerItem(asset: asset)
         self.player = AVPlayer(playerItem: item)
-        self.player.volume = 0
 
         // Load duration async — dispatch to main for @Published updates
         Task { [weak self] in

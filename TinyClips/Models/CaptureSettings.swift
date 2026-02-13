@@ -84,4 +84,5 @@ class CaptureSettings: ObservableObject {
     @AppStorage("gifMaxWidth") var gifMaxWidth: Int = 640
     @AppStorage("videoFrameRate") var videoFrameRate: Int = 30
     @AppStorage("showTrimmer") var showTrimmer: Bool = true
+    @AppStorage("recordAudio") var recordAudio: Bool = false
 }

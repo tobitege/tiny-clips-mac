@@ -48,6 +48,7 @@ struct SettingsView: View {
                     Text("30 fps").tag(30)
                     Text("60 fps").tag(60)
                 }
+                Toggle("Record system audio", isOn: $settings.recordAudio)
                 Toggle("Open trimmer after recording", isOn: $settings.showTrimmer)
             }
 
