@@ -273,12 +273,36 @@ private struct CanvasView: View {
 
                 // Selection highlight for move tool
                 if viewModel.selectedTool == .move,
-                   let selRect = viewModel.selectedAnnotationRect(imageSize: imageSize, origin: origin) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                        .frame(width: selRect.width + 8, height: selRect.height + 8)
-                        .position(x: selRect.midX, y: selRect.midY)
-                        .allowsHitTesting(false)
+                   let idx = viewModel.selectedAnnotationIndex,
+                   idx < viewModel.annotations.count {
+                    let ann = viewModel.annotations[idx]
+
+                    // Show endpoint handles for arrows and lines
+                    if ann.tool == .arrow || ann.tool == .line {
+                        let sr = viewModel.scaledRect(ann.rect, imageSize: imageSize, origin: origin)
+                        let startPt = CGPoint(x: sr.origin.x, y: sr.origin.y)
+                        let endPt = CGPoint(x: sr.origin.x + sr.width, y: sr.origin.y + sr.height)
+
+                        // Tail handle (hollow circle)
+                        Circle()
+                            .stroke(Color.accentColor, lineWidth: 2)
+                            .frame(width: 12, height: 12)
+                            .position(startPt)
+                            .allowsHitTesting(false)
+
+                        // Head handle (filled circle)
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 12, height: 12)
+                            .position(endPt)
+                            .allowsHitTesting(false)
+                    } else if let selRect = viewModel.selectedAnnotationRect(imageSize: imageSize, origin: origin) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                            .frame(width: selRect.width + 8, height: selRect.height + 8)
+                            .position(x: selRect.midX, y: selRect.midY)
+                            .allowsHitTesting(false)
+                    }
                 }
 
                 // Interaction overlay
@@ -325,8 +349,8 @@ private struct CanvasView: View {
 
         case .arrow:
             var path = Path()
-            let start = CGPoint(x: scaledRect.minX, y: scaledRect.minY)
-            let end = CGPoint(x: scaledRect.maxX, y: scaledRect.maxY)
+            let start = CGPoint(x: scaledRect.origin.x, y: scaledRect.origin.y)
+            let end = CGPoint(x: scaledRect.origin.x + scaledRect.width, y: scaledRect.origin.y + scaledRect.height)
             path.move(to: start)
             path.addLine(to: end)
 
@@ -348,8 +372,8 @@ private struct CanvasView: View {
 
         case .line:
             var path = Path()
-            path.move(to: CGPoint(x: scaledRect.minX, y: scaledRect.minY))
-            path.addLine(to: CGPoint(x: scaledRect.maxX, y: scaledRect.maxY))
+            path.move(to: CGPoint(x: scaledRect.origin.x, y: scaledRect.origin.y))
+            path.addLine(to: CGPoint(x: scaledRect.origin.x + scaledRect.width, y: scaledRect.origin.y + scaledRect.height))
             context.stroke(path, with: .color(color), lineWidth: lineWidth)
 
         case .pencil:
@@ -412,6 +436,8 @@ private class EditorViewModel: ObservableObject {
     private var dragOriginalRect: CGRect = .zero
     private var dragOriginalPoints: [CGPoint] = []
     private var isDraggingAnnotation = false
+    private var isDraggingEndpoint = false // true = dragging arrowhead/line end
+    private var isDraggingStartpoint = false // true = dragging arrow tail/line start
 
     init(url: URL) {
         self.sourceURL = url
@@ -513,23 +539,67 @@ private class EditorViewModel: ObservableObject {
     func handleDrag(start: CGPoint, current: CGPoint) {
         switch selectedTool {
         case .move:
-            if !isDraggingAnnotation {
+            if !isDraggingAnnotation && !isDraggingEndpoint && !isDraggingStartpoint {
                 // First drag event — find what we hit
                 if let idx = annotationIndex(at: start) {
                     selectedAnnotationIndex = idx
-                    isDraggingAnnotation = true
                     dragOriginalRect = annotations[idx].rect
                     dragOriginalPoints = annotations[idx].points
-                    dragOffset = .zero
+
+                    let ann = annotations[idx]
+                    if ann.tool == .arrow || ann.tool == .line {
+                        // Check if near the head (end) or tail (start) endpoint
+                        let endPt = CGPoint(x: ann.rect.origin.x + ann.rect.width, y: ann.rect.origin.y + ann.rect.height)
+                        let startPt = CGPoint(x: ann.rect.origin.x, y: ann.rect.origin.y)
+                        let distToEnd = hypot(start.x - endPt.x, start.y - endPt.y)
+                        let distToStart = hypot(start.x - startPt.x, start.y - startPt.y)
+                        let threshold: CGFloat = 0.04
+
+                        if distToEnd < threshold && distToEnd <= distToStart {
+                            isDraggingEndpoint = true
+                        } else if distToStart < threshold && distToStart < distToEnd {
+                            isDraggingStartpoint = true
+                        } else {
+                            isDraggingAnnotation = true
+                        }
+                    } else {
+                        isDraggingAnnotation = true
+                    }
                 } else {
                     selectedAnnotationIndex = nil
                 }
             }
-            if isDraggingAnnotation, let idx = selectedAnnotationIndex {
+            if let idx = selectedAnnotationIndex {
                 let dx = current.x - start.x
                 let dy = current.y - start.y
-                dragOffset = CGPoint(x: dx, y: dy)
-                moveAnnotation(at: idx, dx: dx, dy: dy)
+                if isDraggingEndpoint {
+                    // Move just the endpoint (rotate the arrow/line)
+                    var ann = annotations[idx]
+                    ann.rect = CGRect(
+                        x: dragOriginalRect.origin.x,
+                        y: dragOriginalRect.origin.y,
+                        width: dragOriginalRect.width + dx,
+                        height: dragOriginalRect.height + dy
+                    )
+                    annotations[idx] = ann
+                } else if isDraggingStartpoint {
+                    // Move the start point (reverse rotate)
+                    var ann = annotations[idx]
+                    let origEnd = CGPoint(
+                        x: dragOriginalRect.origin.x + dragOriginalRect.width,
+                        y: dragOriginalRect.origin.y + dragOriginalRect.height
+                    )
+                    let newStart = CGPoint(x: dragOriginalRect.origin.x + dx, y: dragOriginalRect.origin.y + dy)
+                    ann.rect = CGRect(
+                        x: newStart.x,
+                        y: newStart.y,
+                        width: origEnd.x - newStart.x,
+                        height: origEnd.y - newStart.y
+                    )
+                    annotations[idx] = ann
+                } else if isDraggingAnnotation {
+                    moveAnnotation(at: idx, dx: dx, dy: dy)
+                }
             }
 
         case .crop:
@@ -575,6 +645,8 @@ private class EditorViewModel: ObservableObject {
         switch selectedTool {
         case .move:
             isDraggingAnnotation = false
+            isDraggingEndpoint = false
+            isDraggingStartpoint = false
 
         case .crop:
             break
