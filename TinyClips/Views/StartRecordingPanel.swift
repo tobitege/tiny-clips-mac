@@ -7,7 +7,7 @@ class StartRecordingPanel: NSPanel {
 
     convenience init(onStart: @escaping (Bool, Bool) -> Void, onCancel: @escaping () -> Void) {
         self.init(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 44),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -36,6 +36,8 @@ class StartRecordingPanel: NSPanel {
                 self?.onCancel = nil
             }
         ))
+        let fittingSize = hostingView.fittingSize
+        self.setContentSize(fittingSize)
         self.contentView = hostingView
     }
 
@@ -128,6 +130,7 @@ private struct StartRecordingView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .fixedSize()
         .background {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.black.opacity(0.8))
