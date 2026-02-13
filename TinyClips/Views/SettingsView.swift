@@ -58,11 +58,9 @@ struct SettingsView: View {
                 Toggle("Open trimmer after recording", isOn: $settings.showTrimmer)
             }
 
-            if sparkleController.canCheckForUpdates {
-                Section("Updates") {
-                    Button("Check for Updates\u{2026}") {
-                        sparkleController.checkForUpdates()
-                    }
+            Section("Updates") {
+                Button("Check for Updates\u{2026}") {
+                    sparkleController.checkForUpdates()
                 }
             }
 

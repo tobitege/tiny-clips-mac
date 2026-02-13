@@ -36,10 +36,8 @@ struct TinyClipsApp: App {
 
                 Divider()
             }
-            if sparkleController.canCheckForUpdates {
-                Button("Check for Updates\u{2026}") {
-                    sparkleController.checkForUpdates()
-                }
+            Button("Check for Updates\u{2026}") {
+                sparkleController.checkForUpdates()
             }
             SettingsLink {
                 Text("Settings…")
