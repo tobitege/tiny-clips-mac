@@ -142,14 +142,12 @@ class CaptureManager: ObservableObject {
 
     func stopRecording() {
         Task {
+
+            var savedVideoURL: URL?
+
             if let recorder = videoRecorder {
                 do {
-                    let url = try await recorder.stop()
-                    if CaptureSettings.shared.showTrimmer {
-                        showTrimmer(for: url)
-                    } else {
-                        SaveService.shared.handleSavedFile(url: url, type: .video)
-                    }
+                    savedVideoURL = try await recorder.stop()
                 } catch {
                     SaveService.shared.showError("Video save failed: \(error.localizedDescription)")
                 }
@@ -174,6 +172,17 @@ class CaptureManager: ObservableObject {
 
             isRecording = false
             dismissStopPanel()
+
+            // Show editor windows AFTER all recording resources are released
+            // and UI state is cleaned up, so AVPlayer doesn't contend with
+            // AVAssetWriter for the same file.
+            if let savedVideoURL {
+                if CaptureSettings.shared.showTrimmer {
+                    showTrimmer(for: savedVideoURL)
+                } else {
+                    SaveService.shared.handleSavedFile(url: savedVideoURL, type: .video)
+                }
+            }
         }
     }
 

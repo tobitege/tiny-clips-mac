@@ -61,6 +61,7 @@ private struct VideoTrimmerView: View {
                 .frame(minWidth: 400, minHeight: 260)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .padding([.top, .horizontal])
+                .task { await viewModel.loadDuration() }
 
             // Current time display
             HStack {
@@ -245,6 +246,7 @@ private struct TrimRangeSlider: View {
 
 // MARK: - ViewModel
 
+@MainActor
 private class TrimmerViewModel: ObservableObject {
     let player: AVPlayer
     let asset: AVAsset
@@ -266,18 +268,6 @@ private class TrimmerViewModel: ObservableObject {
         let item = AVPlayerItem(asset: asset)
         self.player = AVPlayer(playerItem: item)
 
-        // Load duration async — dispatch to main for @Published updates
-        Task { [weak self] in
-            guard let self else { return }
-            if let dur = try? await asset.load(.duration) {
-                let secs = dur.seconds
-                await MainActor.run {
-                    self.duration = secs
-                    self.trimEnd = secs
-                }
-            }
-        }
-
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(value: 1, timescale: 30),
             queue: .main
@@ -294,6 +284,14 @@ private class TrimmerViewModel: ObservableObject {
     deinit {
         if let obs = timeObserver {
             player.removeTimeObserver(obs)
+        }
+    }
+
+    @MainActor
+    func loadDuration() async {
+        if let dur = try? await asset.load(.duration) {
+            self.duration = dur.seconds
+            self.trimEnd = dur.seconds
         }
     }
 
@@ -338,10 +336,8 @@ private class TrimmerViewModel: ObservableObject {
                 let composition = AVMutableComposition()
                 guard let track = try await asset.loadTracks(withMediaType: .video).first,
                       let compositionTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-                    await MainActor.run {
-                        self.isExporting = false
-                        completion(nil)
-                    }
+                    self.isExporting = false
+                    completion(nil)
                     return
                 }
                 try compositionTrack.insertTimeRange(timeRange, of: track, at: .zero)
@@ -353,10 +349,8 @@ private class TrimmerViewModel: ObservableObject {
                 }
 
                 guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
-                    await MainActor.run {
-                        self.isExporting = false
-                        completion(nil)
-                    }
+                    self.isExporting = false
+                    completion(nil)
                     return
                 }
                 session.outputURL = trimmedURL
@@ -364,15 +358,11 @@ private class TrimmerViewModel: ObservableObject {
 
                 try await session.export(to: trimmedURL, as: .mp4)
                 try? FileManager.default.removeItem(at: self.sourceURL)
-                await MainActor.run {
-                    self.isExporting = false
-                    completion(trimmedURL)
-                }
+                self.isExporting = false
+                completion(trimmedURL)
             } catch {
-                await MainActor.run {
-                    self.isExporting = false
-                    completion(nil)
-                }
+                self.isExporting = false
+                completion(nil)
             }
         }
     }
