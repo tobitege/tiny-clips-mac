@@ -209,6 +209,27 @@ jobs:
 
           rm -f $RUNNER_TEMP/sparkle_private_key
 
+      - name: Generate Changelog
+        run: |
+          # Fetch all tags to find the previous one
+          git fetch --tags --force
+          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | sed -n '2p')
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Generating changelog from $PREVIOUS_TAG to ${{ env.RELEASE_TAG }}"
+            CHANGELOG=$(git log "$PREVIOUS_TAG".."${{ env.RELEASE_TAG }}" --pretty=format:"- %s" --no-merges)
+          else
+            echo "No previous tag found, using all commits"
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+          fi
+
+          # Write to file to preserve multiline content
+          echo "## What's Changed" > $RUNNER_TEMP/changelog.md
+          echo "" >> $RUNNER_TEMP/changelog.md
+          echo "$CHANGELOG" >> $RUNNER_TEMP/changelog.md
+          echo "" >> $RUNNER_TEMP/changelog.md
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${{ env.RELEASE_TAG }}" >> $RUNNER_TEMP/changelog.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -216,7 +237,7 @@ jobs:
           files: |
             ${{ runner.temp }}/${{ env.PRODUCT_NAME }}-${{ env.RELEASE_TAG }}.zip
             ${{ runner.temp }}/release-files/*.delta
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/changelog.md
           draft: false
           prerelease: ${{ contains(env.RELEASE_TAG, 'beta') || contains(env.RELEASE_TAG, 'alpha') }}
         env:
