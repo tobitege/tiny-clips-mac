@@ -45,6 +45,29 @@ struct SettingsView: View {
 
             Section("Screenshot") {
                 Toggle("Open editor after capture", isOn: $settings.showScreenshotEditor)
+
+                Picker("Default format:", selection: $settings.screenshotFormat) {
+                    ForEach(ImageFormat.allCases, id: \.rawValue) { format in
+                        Text(format.label).tag(format.rawValue)
+                    }
+                }
+
+                if settings.imageFormat == .jpeg {
+                    HStack {
+                        Text("JPEG quality:")
+                        Slider(value: $settings.jpegQuality, in: 0.1...1.0, step: 0.05)
+                        Text("\(Int(settings.jpegQuality * 100))%")
+                            .monospacedDigit()
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
+
+                Picker("Default scale:", selection: $settings.screenshotScale) {
+                    Text("100%").tag(100)
+                    Text("75%").tag(75)
+                    Text("50%").tag(50)
+                    Text("25%").tag(25)
+                }
             }
 
             Section("Video") {
@@ -76,7 +99,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 400)
+        .frame(width: 420, height: 480)
     }
 
     private func chooseSaveDirectory() {

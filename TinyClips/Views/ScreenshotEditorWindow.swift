@@ -171,12 +171,44 @@ private struct ScreenshotEditorView: View {
 
     private var bottomBar: some View {
         HStack {
-            // Image info
-            if let img = viewModel.originalImage {
-                let rep = img.representations.first
-                Text("\(Int(rep?.pixelsWide ?? 0)) × \(Int(rep?.pixelsHigh ?? 0))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // Image info & save options
+            VStack(alignment: .leading, spacing: 4) {
+                if let img = viewModel.originalImage {
+                    let rep = img.representations.first
+                    Text("\(Int(rep?.pixelsWide ?? 0)) × \(Int(rep?.pixelsHigh ?? 0))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 12) {
+                    Picker("Format:", selection: $viewModel.saveFormat) {
+                        ForEach(ImageFormat.allCases, id: \.self) { format in
+                            Text(format.label).tag(format)
+                        }
+                    }
+                    .frame(width: 140)
+
+                    Picker("Scale:", selection: $viewModel.saveScale) {
+                        Text("100%").tag(100)
+                        Text("75%").tag(75)
+                        Text("50%").tag(50)
+                        Text("25%").tag(25)
+                    }
+                    .frame(width: 120)
+                }
+
+                HStack(spacing: 4) {
+                    Text("Quality:")
+                        .font(.caption)
+                    Slider(value: $viewModel.saveJpegQuality, in: 0.1...1.0, step: 0.05)
+                        .frame(width: 140)
+                    Text("\(Int(viewModel.saveJpegQuality * 100))%")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .frame(width: 32, alignment: .trailing)
+                }
+                .opacity(viewModel.saveFormat == .jpeg ? 1 : 0)
+                .allowsHitTesting(viewModel.saveFormat == .jpeg)
             }
 
             Spacer()
@@ -189,7 +221,7 @@ private struct ScreenshotEditorView: View {
             Button {
                 viewModel.copyToClipboard()
             } label: {
-                Label("Copy to Clipboard", systemImage: "doc.on.doc")
+                Label("Copy", systemImage: "doc.on.doc")
             }
 
             Button("Save") {
@@ -469,6 +501,9 @@ private class EditorViewModel: ObservableObject {
     @Published var textEditValue: String = ""
     @Published var textFontSize: CGFloat = 16
     @Published var selectedAnnotationIndex: Int?
+    @Published var saveFormat: ImageFormat
+    @Published var saveScale: Int
+    @Published var saveJpegQuality: Double
 
     private var pencilPoints: [CGPoint] = []
     private var imagePixelSize: CGSize = .zero
@@ -481,6 +516,10 @@ private class EditorViewModel: ObservableObject {
 
     init(url: URL) {
         self.sourceURL = url
+        let settings = CaptureSettings.shared
+        self.saveFormat = settings.imageFormat
+        self.saveScale = settings.screenshotScale
+        self.saveJpegQuality = settings.jpegQuality
         if let image = NSImage(contentsOf: url) {
             self.originalImage = image
             if let rep = image.representations.first {
@@ -755,17 +794,46 @@ private class EditorViewModel: ObservableObject {
 
     func save() -> URL? {
         guard let rendered = renderFinalImage() else { return nil }
-        guard let tiffData = rendered.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else { return nil }
 
-        // Write over the source file
+        let scaledImage = scaleImage(rendered, to: saveScale)
+        guard let tiffData = scaledImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+
+        let imageData: Data?
+        switch saveFormat {
+        case .png:
+            imageData = bitmap.representation(using: .png, properties: [:])
+        case .jpeg:
+            imageData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: saveJpegQuality])
+        }
+
+        guard let data = imageData else { return nil }
+
+        // Build output URL with the chosen format extension
+        let saveURL = SaveService.shared.generateURL(for: .screenshot, fileExtension: saveFormat.rawValue)
         do {
-            try pngData.write(to: sourceURL)
-            return sourceURL
+            try data.write(to: saveURL)
+            return saveURL
         } catch {
             return nil
         }
+    }
+
+    private func scaleImage(_ image: NSImage, to percent: Int) -> NSImage {
+        guard percent < 100, percent > 0 else { return image }
+        let factor = CGFloat(percent) / 100.0
+        let newW = Int(image.size.width * factor)
+        let newH = Int(image.size.height * factor)
+        guard newW > 0 && newH > 0 else { return image }
+
+        let scaled = NSImage(size: NSSize(width: newW, height: newH))
+        scaled.lockFocus()
+        image.draw(in: NSRect(x: 0, y: 0, width: newW, height: newH),
+                    from: NSRect(origin: .zero, size: image.size),
+                    operation: .copy,
+                    fraction: 1.0)
+        scaled.unlockFocus()
+        return scaled
     }
 
     // MARK: - Private

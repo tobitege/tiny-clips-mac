@@ -11,50 +11,63 @@ struct TinyClipsApp: App {
 
     var body: some Scene {
         MenuBarExtra("TinyClips", systemImage: captureManager.isRecording ? "record.circle.fill" : "camera.viewfinder") {
-            if !captureManager.isRecording {
-                Button("Screenshot") {
-                    captureManager.takeScreenshot()
-                }
-                .keyboardShortcut("5", modifiers: [.command, .shift])
-
-                Button("Record Video") {
-                    captureManager.startVideoRecording()
-                }
-                .keyboardShortcut("6", modifiers: [.command, .shift])
-
-                Button("Record GIF") {
-                    captureManager.startGifRecording()
-                }
-                .keyboardShortcut("7", modifiers: [.command, .shift])
-
-                Divider()
-            } else {
-                Button("Stop Recording") {
-                    captureManager.stopRecording()
-                }
-                .keyboardShortcut(".", modifiers: .command)
-
-                Divider()
-            }
-            Button("Check for Updates\u{2026}") {
-                sparkleController.checkForUpdates()
-            }
-            SettingsLink {
-                Text("Settings…")
-            }
-            .keyboardShortcut(",", modifiers: .command)
-
-            Divider()
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-            .keyboardShortcut("q", modifiers: .command)
+            MenuBarContentView(captureManager: captureManager, sparkleController: sparkleController)
         }
 
         Settings {
             SettingsView()
         }
+    }
+}
+
+// MARK: - Menu Bar Content
+
+private struct MenuBarContentView: View {
+    @ObservedObject var captureManager: CaptureManager
+    @ObservedObject var sparkleController: SparkleController
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        if !captureManager.isRecording {
+            Button("Screenshot") {
+                captureManager.takeScreenshot()
+            }
+            .keyboardShortcut("5", modifiers: [.command, .shift])
+
+            Button("Record Video") {
+                captureManager.startVideoRecording()
+            }
+            .keyboardShortcut("6", modifiers: [.command, .shift])
+
+            Button("Record GIF") {
+                captureManager.startGifRecording()
+            }
+            .keyboardShortcut("7", modifiers: [.command, .shift])
+
+            Divider()
+        } else {
+            Button("Stop Recording") {
+                captureManager.stopRecording()
+            }
+            .keyboardShortcut(".", modifiers: .command)
+
+            Divider()
+        }
+        Button("Check for Updates\u{2026}") {
+            sparkleController.checkForUpdates()
+        }
+        Button("Settings…") {
+            openSettings()
+            NSApp.activate()
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        Divider()
+
+        Button("Quit") {
+            NSApplication.shared.terminate(nil)
+        }
+        .keyboardShortcut("q", modifiers: .command)
     }
 }
 

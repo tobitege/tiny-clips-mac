@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import ScreenCaptureKit
+import UniformTypeIdentifiers
 
 // MARK: - Capture Region
 
@@ -39,7 +40,7 @@ enum CaptureType: String {
 
     var fileExtension: String {
         switch self {
-        case .screenshot: return "png"
+        case .screenshot: return CaptureSettings.shared.imageFormat.rawValue
         case .video: return "mp4"
         case .gif: return "gif"
         }
@@ -72,6 +73,27 @@ enum CaptureError: LocalizedError {
     }
 }
 
+// MARK: - Image Format
+
+enum ImageFormat: String, CaseIterable {
+    case png = "png"
+    case jpeg = "jpg"
+
+    var label: String {
+        switch self {
+        case .png: return "PNG"
+        case .jpeg: return "JPEG"
+        }
+    }
+
+    var utType: UTType {
+        switch self {
+        case .png: return .png
+        case .jpeg: return .jpeg
+        }
+    }
+}
+
 // MARK: - Settings
 
 class CaptureSettings: ObservableObject {
@@ -88,4 +110,12 @@ class CaptureSettings: ObservableObject {
     @AppStorage("recordMicrophone") var recordMicrophone: Bool = false
     @AppStorage("showScreenshotEditor") var showScreenshotEditor: Bool = true
     @AppStorage("showGifTrimmer") var showGifTrimmer: Bool = true
+    @AppStorage("screenshotFormat") var screenshotFormat: String = ImageFormat.png.rawValue
+    @AppStorage("screenshotScale") var screenshotScale: Int = 100
+    @AppStorage("jpegQuality") var jpegQuality: Double = 0.85
+
+    var imageFormat: ImageFormat {
+        get { ImageFormat(rawValue: screenshotFormat) ?? .png }
+        set { screenshotFormat = newValue.rawValue }
+    }
 }

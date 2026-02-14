@@ -5,6 +5,10 @@ class SaveService {
     static let shared = SaveService()
 
     func generateURL(for type: CaptureType) -> URL {
+        return generateURL(for: type, fileExtension: type.fileExtension)
+    }
+
+    func generateURL(for type: CaptureType, fileExtension: String) -> URL {
         let directory = UserDefaults.standard.string(forKey: "saveDirectory")
             ?? (NSHomeDirectory() + "/Desktop")
 
@@ -17,7 +21,7 @@ class SaveService {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         let timestamp = formatter.string(from: Date())
-        let filename = "TinyClips \(timestamp).\(type.fileExtension)"
+        let filename = "TinyClips \(timestamp).\(fileExtension)"
         return URL(fileURLWithPath: directory).appendingPathComponent(filename)
     }
 
