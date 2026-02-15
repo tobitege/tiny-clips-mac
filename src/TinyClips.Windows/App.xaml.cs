@@ -1,7 +1,7 @@
-using System.Windows;
+using WpfApplication = System.Windows.Application;
 
 namespace TinyClips.Windows;
 
-public partial class App : Application
+public partial class App : WpfApplication
 {
 }

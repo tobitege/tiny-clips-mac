@@ -1,13 +1,17 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using Vanara.PInvoke;
+using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WpfPoint = System.Windows.Point;
 
 namespace TinyClips.Windows.Views;
 
 public partial class RegionSelectionWindow : Window
 {
-    private Point _startPoint;
+    private WpfPoint _startPoint;
     private bool _isSelecting;
 
     public Int32Rect? Selection { get; private set; }
@@ -36,7 +40,7 @@ public partial class RegionSelectionWindow : Window
         if (PresentationSource.FromVisual(this) is HwndSource source)
         {
             User32.SetWindowPos(source.Handle,
-                User32.SpecialWindowHandles.HWND_TOPMOST,
+                new HWND(-1),
                 0,
                 0,
                 0,
@@ -60,7 +64,7 @@ public partial class RegionSelectionWindow : Window
         CaptureMouse();
     }
 
-    protected override void OnMouseMove(MouseEventArgs e)
+    protected override void OnMouseMove(WpfMouseEventArgs e)
     {
         base.OnMouseMove(e);
         if (!_isSelecting)
@@ -92,17 +96,19 @@ public partial class RegionSelectionWindow : Window
         ReleaseMouseCapture();
 
         var current = e.GetPosition(this);
-        var x = (int)Math.Round(Math.Min(current.X, _startPoint.X) + Left);
-        var y = (int)Math.Round(Math.Min(current.Y, _startPoint.Y) + Top);
-        var width = (int)Math.Round(Math.Abs(current.X - _startPoint.X));
-        var height = (int)Math.Round(Math.Abs(current.Y - _startPoint.Y));
+        var startScreen = PointToScreen(_startPoint);
+        var currentScreen = PointToScreen(current);
+        var x = (int)Math.Round(Math.Min(currentScreen.X, startScreen.X));
+        var y = (int)Math.Round(Math.Min(currentScreen.Y, startScreen.Y));
+        var width = (int)Math.Round(Math.Abs(currentScreen.X - startScreen.X));
+        var height = (int)Math.Round(Math.Abs(currentScreen.Y - startScreen.Y));
 
         Selection = new Int32Rect(x, y, width, height);
         DialogResult = width > 5 && height > 5;
         Close();
     }
 
-    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    protected override void OnPreviewKeyDown(WpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {

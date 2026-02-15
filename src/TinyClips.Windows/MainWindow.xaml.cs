@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using TinyClips.Windows.Models;
@@ -45,16 +46,49 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 return;
             }
 
+            var output = ResolveOutputPath(CaptureType.Screenshot);
+            if (output is null)
+            {
+                StatusMessage = "Capture canceled.";
+                return;
+            }
+
             using var bitmap = ScreenCaptureService.CaptureRegion(region.Value);
-            var output = ScreenCaptureService.SaveBitmap(bitmap, Settings.SaveDirectory);
+            while (true)
+            {
+                try
+                {
+                    ScreenCaptureService.SaveBitmap(bitmap, output);
+                    break;
+                }
+                catch (IOException)
+                {
+                    output = PromptForUniqueOutputPath(CaptureType.Screenshot, output);
+                    if (output is null)
+                    {
+                        StatusMessage = "Capture canceled.";
+                        return;
+                    }
+                }
+            }
+            string? clipboardFailureMessage = null;
 
             if (Settings.CopyToClipboard)
             {
-                Clipboard.SetImage(ScreenCaptureService.ToBitmapSource(bitmap));
+                try
+                {
+                    System.Windows.Clipboard.SetImage(ScreenCaptureService.ToBitmapSource(bitmap));
+                }
+                catch (Exception ex)
+                {
+                    clipboardFailureMessage = ex.Message;
+                }
             }
 
             PostSave(output);
-            StatusMessage = $"Screenshot saved: {output}";
+            StatusMessage = clipboardFailureMessage is null
+                ? $"Screenshot saved: {output}"
+                : $"Screenshot saved: {output}. Clipboard failed: {clipboardFailureMessage}";
         }
         catch (Exception ex)
         {
@@ -115,10 +149,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             var recording = _activeRecording;
-            _activeRecording = null;
+            var output = ResolveOutputPath(recording.CaptureType);
+            if (output is null)
+            {
+                StatusMessage = "Finalize canceled. Recording continues.";
+                return;
+            }
 
-            StatusMessage = "Finalizing recording...";
-            var output = await recording.StopAndSaveAsync();
+            while (true)
+            {
+                try
+                {
+                    StatusMessage = "Finalizing recording...";
+                    output = await recording.StopAndSaveAsync(output);
+                    break;
+                }
+                catch (IOException)
+                {
+                    output = PromptForUniqueOutputPath(recording.CaptureType, output);
+                    if (output is null)
+                    {
+                        StatusMessage = "Finalize canceled. Recording data is still available.";
+                        return;
+                    }
+                }
+            }
+
+            _activeRecording = null;
             PostSave(output);
             StatusMessage = $"Recording saved: {output}";
         }
@@ -172,6 +229,87 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{output}\"") { UseShellExecute = true });
         }
+    }
+
+    private string? ResolveOutputPath(CaptureType captureType)
+    {
+        Directory.CreateDirectory(Settings.SaveDirectory);
+        var extension = GetExtension(captureType);
+        var defaultPath = Path.Combine(Settings.SaveDirectory, $"tinyclip-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}");
+        if (!File.Exists(defaultPath))
+        {
+            return defaultPath;
+        }
+
+        return PromptForUniqueOutputPath(captureType, defaultPath);
+    }
+
+    private string? PromptForUniqueOutputPath(CaptureType captureType, string initialPath)
+    {
+        var extension = GetExtension(captureType);
+        var currentDirectory = Path.GetDirectoryName(initialPath) ?? Settings.SaveDirectory;
+        var currentFileName = Path.GetFileName(initialPath);
+
+        while (true)
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Select a new filename",
+                InitialDirectory = currentDirectory,
+                FileName = currentFileName,
+                DefaultExt = extension,
+                AddExtension = true,
+                Filter = GetFilter(captureType),
+                OverwritePrompt = false,
+                CheckFileExists = false
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return null;
+            }
+
+            var selectedPath = EnsureExtension(dialog.FileName, extension);
+            if (!File.Exists(selectedPath))
+            {
+                return selectedPath;
+            }
+
+            System.Windows.MessageBox.Show(this,
+                "That filename already exists. Please choose a different one.",
+                "File already exists",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+
+            currentDirectory = Path.GetDirectoryName(selectedPath) ?? currentDirectory;
+            currentFileName = Path.GetFileName(selectedPath);
+        }
+    }
+
+    private static string GetExtension(CaptureType captureType) =>
+        captureType switch
+        {
+            CaptureType.Screenshot => "png",
+            CaptureType.Video => "mp4",
+            CaptureType.Gif => "gif",
+            _ => throw new ArgumentOutOfRangeException(nameof(captureType), captureType, "Unsupported capture type.")
+        };
+
+    private static string GetFilter(CaptureType captureType) =>
+        captureType switch
+        {
+            CaptureType.Screenshot => "PNG Image (*.png)|*.png",
+            CaptureType.Video => "MP4 Video (*.mp4)|*.mp4",
+            CaptureType.Gif => "GIF Animation (*.gif)|*.gif",
+            _ => throw new ArgumentOutOfRangeException(nameof(captureType), captureType, "Unsupported capture type.")
+        };
+
+    private static string EnsureExtension(string path, string extension)
+    {
+        var normalizedExtension = extension.StartsWith(".") ? extension : $".{extension}";
+        return string.Equals(Path.GetExtension(path), normalizedExtension, StringComparison.OrdinalIgnoreCase)
+            ? path
+            : Path.ChangeExtension(path, normalizedExtension);
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>

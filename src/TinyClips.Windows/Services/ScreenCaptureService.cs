@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 
@@ -9,6 +10,11 @@ public static class ScreenCaptureService
 {
     public static Bitmap CaptureRegion(Int32Rect rect)
     {
+        if (rect.Width <= 0 || rect.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rect), "Capture region must have a positive width and height.");
+        }
+
         var bitmap = new Bitmap(rect.Width, rect.Height);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.CopyFromScreen(rect.X, rect.Y, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
@@ -32,25 +38,29 @@ public static class ScreenCaptureService
         }
     }
 
-    public static string SaveBitmap(Bitmap source, string directory, ImageFormat? format = null, long jpegQuality = 90)
+    public static string SaveBitmap(Bitmap source, string outputPath, ImageFormat? format = null, long jpegQuality = 90)
     {
-        Directory.CreateDirectory(directory);
-        var extension = format == ImageFormat.Jpeg ? "jpg" : "png";
-        var fileName = $"tinyclip-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}";
-        var path = Path.Combine(directory, fileName);
+        var outputDirectory = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+        {
+            throw new ArgumentException("Output path must include a directory.", nameof(outputPath));
+        }
 
+        Directory.CreateDirectory(outputDirectory);
+
+        using var stream = new FileStream(outputPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         if (format == ImageFormat.Jpeg)
         {
             var codec = ImageCodecInfo.GetImageDecoders().First(x => x.FormatID == ImageFormat.Jpeg.Guid);
             var parameters = new EncoderParameters(1);
             parameters.Param[0] = new EncoderParameter(Encoder.Quality, jpegQuality);
-            source.Save(path, codec, parameters);
+            source.Save(stream, codec, parameters);
         }
         else
         {
-            source.Save(path, ImageFormat.Png);
+            source.Save(stream, ImageFormat.Png);
         }
 
-        return path;
+        return outputPath;
     }
 }

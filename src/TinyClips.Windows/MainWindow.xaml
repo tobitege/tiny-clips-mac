@@ -5,8 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="TinyClips for Windows 11"
-        Height="560"
+        Height="620"
+        MinHeight="620"
         Width="760"
+        MinWidth="400"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -41,8 +43,14 @@
                     <CheckBox Content="Reveal output in Explorer" IsChecked="{Binding Settings.OpenFolderAfterSave}" Margin="0,0,0,8" />
                     <TextBlock Text="Save directory" />
                     <DockPanel Margin="0,4,0,0">
-                        <TextBox Text="{Binding Settings.SaveDirectory}" IsReadOnly="True" Margin="0,0,8,0" />
-                        <Button Padding="8,4" Content="Browse" Click="OnBrowseFolderClicked" />
+                        <Button DockPanel.Dock="Right"
+                                MaxWidth="120"
+                                Margin="8,0,0,0"
+                                Padding="8,4"
+                                Click="OnBrowseFolderClicked">
+                            <TextBlock Text="Browse" TextWrapping="Wrap" TextAlignment="Center" />
+                        </Button>
+                        <TextBox Text="{Binding Settings.SaveDirectory}" IsReadOnly="True" />
                     </DockPanel>
                     <Button Margin="0,12,0,0" Padding="8" Content="Open Save Folder" Click="OnOpenFolderClicked" />
                 </StackPanel>
