@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> **Windows Port Branch Notice:** this branch contains the Windows 11 / C# / .NET 9 migration of TinyClips.  
+> **Windows Port Branch Notice:** this branch contains the Windows 11 / C# / .NET 9 migration of TinyClips.
 > The original project README content is preserved below for continuity, with Windows-specific updates layered on top.
 
 # TinyClips for macOS
@@ -94,10 +94,55 @@ dotnet run --project src/TinyClips.Windows/TinyClips.Windows.csproj
   - `Services/CountdownService.cs` - Countdown workflow
   - `Models/CaptureSettings.cs` - Persistent settings model
 
-## Notes
+## Notes for Mac version
 
-- Legacy macOS Swift/Xcode sources (`TinyClips/`, `TinyClips.xcodeproj`) are kept in the repository for migration reference.
-- This Linux container environment cannot execute Windows WPF UI directly.
+Sparkle must be added manually via Xcode:
+
+1. Open `TinyClips.xcodeproj` in Xcode
+2. Go to **File → Add Package Dependencies...**
+3. Enter URL: `https://github.com/sparkle-project/Sparkle`
+4. Select version rule: **Up to Next Major Version** from `2.8.1`
+5. Add the `Sparkle` framework to the `TinyClips` target
+
+See [docs/sparkle-setup.md](docs/sparkle-setup.md) for full setup including key generation.
+
+## App Store Variant
+
+To ship both a direct (Sparkle, non-sandbox) build and a Mac App Store (sandboxed, no Sparkle) build from one codebase, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
+
+### Xcode Cloud
+
+This project uses a hybrid CI/CD setup:
+
+- GitHub Actions for direct distribution build/release (`TinyClips`)
+- Xcode Cloud for Mac App Store build/distribution (`TinyClipsMAS`)
+
+For App Store variant details and Xcode Cloud notes, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
+
+## Architecture
+
+```
+ScreenCaptureKit (SCStream / SCScreenshotManager)
+       │
+       ├── ScreenshotCapture → CGImageDestination → PNG
+       ├── VideoRecorder → AVAssetWriter → MP4
+       └── GifWriter → CGImageDestination → GIF
+```
+
+### Key Components
+
+| File | Purpose |
+|------|---------|
+| `TinyClipsApp.swift` | App entry, MenuBarExtra, CaptureManager |
+| `RegionSelector.swift` | Fullscreen NSWindow overlay for region selection |
+| `ScreenshotCapture.swift` | SCScreenshotManager → PNG |
+| `VideoRecorder.swift` | SCStream → AVAssetWriter → MP4 |
+| `GifWriter.swift` | SCStream → CGImageDestination → GIF |
+| `VideoTrimmerWindow.swift` | Post-recording trim editor for videos |
+| `CaptureSettings.swift` | Shared types + @AppStorage settings model |
+| `SaveService.swift` | File saving, clipboard, Finder, notifications |
+| `PermissionManager.swift` | Screen recording permission handling |
+| `SparkleController.swift` | Sparkle auto-update integration |
 
 ## License
 

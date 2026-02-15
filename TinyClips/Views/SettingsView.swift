@@ -59,6 +59,31 @@ struct SettingsView: View {
     @ViewBuilder
     private var generalSection: some View {
         Section("Output") {
+#if APPSTORE
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Default locations: Screenshots/GIFs → Pictures/TinyClips, Videos → Movies/TinyClips")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Text(settings.saveDirectoryDisplayPath.isEmpty ? "Using default folders" : settings.saveDirectoryDisplayPath)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Spacer()
+
+                    Button("Browse…") {
+                        chooseSaveDirectory()
+                    }
+
+                    if settings.hasCustomSaveDirectory {
+                        Button("Reset") {
+                            resetSaveDirectory()
+                        }
+                    }
+                }
+            }
+#else
             HStack {
                 TextField("Save to", text: $settings.saveDirectory)
                     .textFieldStyle(.roundedBorder)
@@ -66,6 +91,7 @@ struct SettingsView: View {
                     chooseSaveDirectory()
                 }
             }
+#endif
             Toggle("Copy to clipboard", isOn: $settings.copyToClipboard)
             Toggle("Show in Finder after save", isOn: $settings.showInFinder)
         }
@@ -219,23 +245,46 @@ struct SettingsView: View {
             Link("Report an Issue", destination: URL(string: "https://github.com/jamesmontemagno/tiny-clips-mac/issues/new")!)
         }
 
+#if !APPSTORE
         Section {
             Button("Check for Updates\u{2026}") {
                 sparkleController.checkForUpdates()
             }
         }
+#endif
     }
 
     // MARK: - Helpers
 
     private func chooseSaveDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        if panel.runModal() == .OK, let url = panel.url {
+        DispatchQueue.main.async {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.canCreateDirectories = true
+#if APPSTORE
+            panel.directoryURL = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
+#endif
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+#if APPSTORE
+            do {
+                let bookmark = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+                settings.saveDirectoryBookmark = bookmark
+                settings.saveDirectoryDisplayPath = url.path
+            } catch {
+                SaveService.shared.showError("Could not save folder permission: \(error.localizedDescription)")
+            }
+#else
             settings.saveDirectory = url.path
+#endif
         }
     }
+
+#if APPSTORE
+    private func resetSaveDirectory() {
+        settings.saveDirectoryBookmark = Data()
+        settings.saveDirectoryDisplayPath = ""
+    }
+#endif
 }
