@@ -100,6 +100,10 @@ class CaptureSettings: ObservableObject {
     static let shared = CaptureSettings()
 
     @AppStorage("saveDirectory") var saveDirectory: String = NSHomeDirectory() + "/Desktop"
+#if APPSTORE
+    @AppStorage("saveDirectoryBookmark") var saveDirectoryBookmark: Data = Data()
+    @AppStorage("saveDirectoryDisplayPath") var saveDirectoryDisplayPath: String = ""
+#endif
     @AppStorage("copyToClipboard") var copyToClipboard: Bool = true
     @AppStorage("showInFinder") var showInFinder: Bool = false
     @AppStorage("gifFrameRate") var gifFrameRate: Double = 10
@@ -117,6 +121,12 @@ class CaptureSettings: ObservableObject {
     @AppStorage("videoCountdownDuration") var videoCountdownDuration: Int = 3
     @AppStorage("gifCountdownEnabled") var gifCountdownEnabled: Bool = true
     @AppStorage("gifCountdownDuration") var gifCountdownDuration: Int = 3
+
+#if APPSTORE
+    var hasCustomSaveDirectory: Bool {
+        !saveDirectoryBookmark.isEmpty
+    }
+#endif
 
     var imageFormat: ImageFormat {
         get { ImageFormat(rawValue: screenshotFormat) ?? .png }

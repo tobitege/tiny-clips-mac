@@ -1,6 +1,10 @@
 # TinyClips — Project Guidelines
 
-TinyClips is a macOS menu bar app for screen capture (screenshots, video, GIF). It targets **macOS 15.0+**, uses **Swift 5** with an Xcode project (no Package.swift), and has **Sparkle** as its only dependency (via SPM).
+TinyClips is a macOS menu bar app for screen capture (screenshots, video, GIF). It targets **macOS 15.0+**, uses **Swift 5** with an Xcode project (no Package.swift), and has **Sparkle** as its only dependency (via SPM) for direct distribution builds.
+
+The project supports two app variants from one codebase:
+- **Direct distribution target:** `TinyClips` (non-sandboxed, Sparkle-enabled)
+- **Mac App Store target:** `TinyClipsMAS` (sandboxed, no Sparkle linkage, `APPSTORE` compilation condition)
 
 ## Architecture
 
@@ -8,7 +12,8 @@ TinyClips is a macOS menu bar app for screen capture (screenshots, video, GIF). 
 - **Mixed SwiftUI + AppKit**: SwiftUI for menu bar content, settings, and inline UI; AppKit `NSWindow`/`NSPanel` subclasses for all floating windows (stop panel, trimmer, editor). AppKit windows host SwiftUI views via `NSHostingView`.
 - **`CaptureManager`** in `TinyClipsApp.swift` is the central coordinator owning recorders, writers, and editor windows.
 - **Singleton services**: `CaptureSettings.shared`, `SaveService.shared`, `PermissionManager.shared`, `SparkleController.shared`.
-- **Not sandboxed** — hardened runtime is enabled.
+- **Direct target is not sandboxed** — hardened runtime is enabled.
+- **App Store target is sandboxed** with separate entitlements and Info.plist.
 
 ## Code Style
 
@@ -19,6 +24,7 @@ TinyClips is a macOS menu bar app for screen capture (screenshots, video, GIF). 
 - Keep SwiftUI views inside window files as `private struct`.
 - Use `popover(item:)` over `popover(isPresented:)` for data-dependent popovers.
 - Guard Sparkle imports with `#if canImport(Sparkle)`.
+- Use `#if APPSTORE` for MAS-specific UI/behavior differences and keep direct target behavior unchanged by default.
 
 ## Build and Test
 
@@ -27,11 +33,16 @@ TinyClips is a macOS menu bar app for screen capture (screenshots, video, GIF). 
 xcodebuild build -project TinyClips.xcodeproj -scheme TinyClips -configuration Debug \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
+# Build Mac App Store variant (CI, no signing)
+xcodebuild build -project TinyClips.xcodeproj -scheme TinyClipsMAS -configuration Debug \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
 # Local development
 open TinyClips.xcodeproj  # then ⌘R in Xcode
 ```
 
 No test target exists. Adding Sparkle dependency requires following `docs/sparkle-setup.md`.
+App Store variant setup details are in `docs/app-store-variant-setup.md`.
 
 ## Project Conventions
 
@@ -85,9 +96,11 @@ Screenshot `⌘⇧5`, Video `⌘⇧6`, GIF `⌘⇧7`, Stop `⌘.`, Settings `⌘
 - `SettingsTab` enum (`CaseIterable`, `rawValue` = display title, `icon` computed property for SF Symbol).
 - `Form` with `.formStyle(.grouped)`. Each tab is a `@ViewBuilder private var`.
 - Fixed frame: `.frame(width: 420, height: 340)`.
+- For MAS (`APPSTORE`): keep save location UI minimal and sandbox-safe (default Pictures/Movies behavior plus user-selected folder bookmark path display).
 
 ## Security
 
-- Entitlements: audio input, disabled library validation (for Sparkle). **Not sandboxed**.
+- Direct target entitlements: audio input, disabled library validation (for Sparkle), **not sandboxed**.
+- MAS target entitlements: sandbox enabled, Pictures/Movies read-write, audio input, no Sparkle-related library validation bypass.
 - Screen recording: dual-check — `CGPreflightScreenCaptureAccess()` first, then `SCShareableContent` query as fallback for macOS 15+ false negatives.
 - Microphone: `NSMicrophoneUsageDescription` in Info.plist, requested at recording time via `AVCaptureDevice.requestAccess(for: .audio)`.

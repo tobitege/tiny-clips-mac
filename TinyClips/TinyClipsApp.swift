@@ -53,9 +53,11 @@ private struct MenuBarContentView: View {
 
             Divider()
         }
+#if !APPSTORE
         Button("Check for Updates\u{2026}") {
             sparkleController.checkForUpdates()
         }
+#endif
         Button("Settings…") {
             openSettings()
             NSApp.activate()

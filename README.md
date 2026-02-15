@@ -93,7 +93,20 @@ Sparkle must be added manually via Xcode:
 4. Select version rule: **Up to Next Major Version** from `2.8.1`
 5. Add the `Sparkle` framework to the `TinyClips` target
 
-See [docs/sparkle-setup.md](docs/sparkle-setup.md) for full setup including key generation and CI/CD secrets.
+See [docs/sparkle-setup.md](docs/sparkle-setup.md) for full setup including key generation.
+
+## App Store Variant
+
+To ship both a direct (Sparkle, non-sandbox) build and a Mac App Store (sandboxed, no Sparkle) build from one codebase, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
+
+### Xcode Cloud
+
+This project uses a hybrid CI/CD setup:
+
+- GitHub Actions for direct distribution build/release (`TinyClips`)
+- Xcode Cloud for Mac App Store build/distribution (`TinyClipsMAS`)
+
+For App Store variant details and Xcode Cloud notes, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
 
 ## Architecture
 
