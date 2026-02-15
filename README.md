@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **Windows Port Branch Notice:** this branch contains the Windows 11 / C# / .NET 9 migration of TinyClips.  
+> The original project README content is preserved below for continuity, with Windows-specific updates layered on top.
+
 # TinyClips for macOS
 
 [![Build](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml)
@@ -7,125 +11,94 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift)
 [![License: MIT](https://img.shields.io/github/license/jamesmontemagno/tiny-clips-mac?style=flat-square)](LICENSE)
 
-A lightweight macOS menu bar app for capturing screenshots (PNG), video (MP4), and animated GIFs of a selected screen region.
+> **Windows Status Update:** This branch now targets **Windows 11 (.NET 9 WPF)** with screenshot, MP4, and GIF region capture.
+
+TinyClips is a lightweight app for capturing screenshots (PNG), video (MP4), and animated GIFs of a selected screen region.
 
 ![](./docs/tinyclips.png)
 
 ## Features
 
-- **Screenshot** — Select a region and capture a PNG screenshot
-- **Video Recording** — Record a screen region to MP4 with H.264 encoding
-- **GIF Recording** — Record a screen region as an animated GIF
-- **Video Trimmer** — Built-in trim editor to cut the start/end before saving
-- **Menu Bar App** — Lives in the menu bar with no Dock icon
-- **Region Selection** — Drag to select any portion of any screen
-- **Auto-Updates** — Built-in Sparkle integration for seamless updates
-- **Configurable** — Save location, clipboard, Finder reveal, GIF quality, trimmer toggle
+- **Screenshot** - Capture a selected region to PNG
+- **Video Recording** - Record a selected region to MP4
+- **GIF Recording** - Record a selected region as an animated GIF
+- **Countdowns** - Optional pre-record countdown for video and GIF
+- **Region Selection** - Fullscreen drag-to-select overlay across virtual desktop
+- **Settings Persistence** - Settings stored at `%LocalAppData%\TinyClips.Windows\settings.json`
+- **Clipboard Support** - Optional screenshot copy to clipboard
+- **Explorer Reveal** - Optional reveal output file in Explorer after save
+- **Win32 Interop** - Uses Vanara (`User32`, `Gdi32`) for native window behavior
 
 ## Requirements
 
-- macOS 15.0 (Sequoia) or later
-- Xcode 16.0 or later
+- Windows 11
+- .NET 9 SDK (or Visual Studio 2022 17.12+)
 
-## Installation
+## Installation / Build
 
-### Download
+### Build from source
 
-Download the latest release from the [Releases](https://github.com/jamesmontemagno/tiny-clips-mac/releases) page.
+```powershell
+dotnet restore TinyClips.Windows.sln
+dotnet build TinyClips.Windows.sln -c Release
+```
 
-### Build from Source
+### Run
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/jamesmontemagno/tiny-clips-mac.git
-   cd tiny-clips-mac
-   ```
-
-2. Open in Xcode:
-   ```bash
-   open TinyClips.xcodeproj
-   ```
-
-3. Add Sparkle package dependency (see [Sparkle Setup](#sparkle-setup))
-
-4. Build and run (⌘R)
+```powershell
+dotnet run --project src/TinyClips.Windows/TinyClips.Windows.csproj
+```
 
 ## Usage
 
-1. Click the camera icon in the menu bar
-2. Choose **Screenshot**, **Record Video**, or **Record GIF**
-3. Drag to select a screen region
-4. For video/GIF: click the floating **Stop** button when done
+1. Launch the app.
+2. Choose one of the capture actions:
+   - **Screenshot**
+   - **Record Video**
+   - **Record GIF**
+3. Drag to select the screen region.
+4. For video/GIF, stop recording with **Stop Active Recording**.
+5. Find outputs in the configured save folder.
 
-### Keyboard Shortcuts (in menu)
+## Keyboard / Controls
 
-| Action | Shortcut |
-|--------|----------|
-| Screenshot | ⇧⌘5 |
-| Record Video | ⇧⌘6 |
-| Record GIF | ⇧⌘7 |
-| Stop Recording | ⌘. |
-| Settings | ⌘, |
+| Action | Control |
+|--------|---------|
+| Select capture area | Click + drag |
+| Cancel region selection | `Esc` |
+| Finish recording | Click **Stop Active Recording** |
 
-### Settings
+## Settings
 
 | Option | Description |
 |--------|-------------|
-| Save Directory | Where captures are saved (default: Desktop) |
-| Copy to Clipboard | Auto-copy captures to clipboard |
-| Show in Finder | Reveal saved file in Finder |
-| GIF Frame Rate | 5–30 fps (default: 10) |
-| GIF Max Width | 320–1920 px (default: 640) |
-| Video Frame Rate | 24, 30, or 60 fps |
-| Open Trimmer | Show trim editor after video recording |
+| Save Directory | Output folder for screenshots and recordings |
+| Copy screenshot to clipboard | Copies screenshot captures to clipboard |
+| Reveal output in Explorer | Opens Explorer and selects the saved file |
+| Video FPS | Recording frame rate for MP4 (`24`, `30`, `60`) |
+| Video countdown | Enable/disable countdown before video starts |
+| Video countdown duration | Countdown duration in seconds |
+| GIF FPS | Animated GIF frame rate (`5-30`) |
+| GIF Max Width | Max output width for GIF (`320-1920`) |
+| GIF countdown | Enable/disable countdown before GIF recording |
+| GIF countdown duration | Countdown duration in seconds |
 
-## Permissions
+## Project layout
 
-TinyClips requires **Screen Recording** permission. On first launch, macOS will prompt you to grant access. After granting, restart the app.
+- `TinyClips.Windows.sln` - Visual Studio solution
+- `src/TinyClips.Windows/` - Windows app source code
+  - `MainWindow.*` - Main UI and capture workflows
+  - `Views/RegionSelectionWindow.*` - Region selector overlay
+  - `Services/ScreenCaptureService.cs` - Frame capture and image save
+  - `Services/RecordingSession.cs` - MP4/GIF recording pipeline
+  - `Services/CountdownService.cs` - Countdown workflow
+  - `Models/CaptureSettings.cs` - Persistent settings model
 
-## Sparkle Setup
+## Notes
 
-Sparkle must be added manually via Xcode:
-
-1. Open `TinyClips.xcodeproj` in Xcode
-2. Go to **File → Add Package Dependencies...**
-3. Enter URL: `https://github.com/sparkle-project/Sparkle`
-4. Select version rule: **Up to Next Major Version** from `2.8.1`
-5. Add the `Sparkle` framework to the `TinyClips` target
-
-See [docs/sparkle-setup.md](docs/sparkle-setup.md) for full setup including key generation and CI/CD secrets.
-
-## Architecture
-
-```
-ScreenCaptureKit (SCStream / SCScreenshotManager)
-       │
-       ├── ScreenshotCapture → CGImageDestination → PNG
-       ├── VideoRecorder → AVAssetWriter → MP4
-       └── GifWriter → CGImageDestination → GIF
-```
-
-### Key Components
-
-| File | Purpose |
-|------|---------|
-| `TinyClipsApp.swift` | App entry, MenuBarExtra, CaptureManager |
-| `RegionSelector.swift` | Fullscreen NSWindow overlay for region selection |
-| `ScreenshotCapture.swift` | SCScreenshotManager → PNG |
-| `VideoRecorder.swift` | SCStream → AVAssetWriter → MP4 |
-| `GifWriter.swift` | SCStream → CGImageDestination → GIF |
-| `VideoTrimmerWindow.swift` | Post-recording trim editor for videos |
-| `CaptureSettings.swift` | Shared types + @AppStorage settings model |
-| `SaveService.swift` | File saving, clipboard, Finder, notifications |
-| `PermissionManager.swift` | Screen recording permission handling |
-| `SparkleController.swift` | Sparkle auto-update integration |
+- Legacy macOS Swift/Xcode sources (`TinyClips/`, `TinyClips.xcodeproj`) are kept in the repository for migration reference.
+- This Linux container environment cannot execute Windows WPF UI directly.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a [Pull Request](https://github.com/jamesmontemagno/tiny-clips-mac/pulls).
-
-Found a bug or have a feature request? [Open an issue](https://github.com/jamesmontemagno/tiny-clips-mac/issues/new).
+MIT. See `LICENSE`.
