@@ -229,19 +229,21 @@ class VideoRecorder: NSObject, @unchecked Sendable {
             throw CaptureError.noFrames
         }
 
-        let systemAudioInput = self.systemAudioInput
-        let micAudioInput = self.micAudioInput
+        nonisolated(unsafe) let capturedVideoInput = videoInput
+        nonisolated(unsafe) let capturedSystemAudioInput = self.systemAudioInput
+        nonisolated(unsafe) let capturedMicAudioInput = self.micAudioInput
+        nonisolated(unsafe) let capturedWriter = writer
 
         return try await withCheckedThrowingContinuation { continuation in
             writingQueue.async {
-                videoInput.markAsFinished()
-                systemAudioInput?.markAsFinished()
-                micAudioInput?.markAsFinished()
-                writer.finishWriting {
-                    if writer.status == .completed {
+                capturedVideoInput.markAsFinished()
+                capturedSystemAudioInput?.markAsFinished()
+                capturedMicAudioInput?.markAsFinished()
+                capturedWriter.finishWriting {
+                    if capturedWriter.status == .completed {
                         continuation.resume(returning: outputURL)
                     } else {
-                        continuation.resume(throwing: writer.error ?? CaptureError.saveFailed)
+                        continuation.resume(throwing: capturedWriter.error ?? CaptureError.saveFailed)
                     }
                 }
             }
@@ -279,6 +281,9 @@ extension VideoRecorder: SCStreamOutput {
         case .audio:
             guard hasStartedWriting, let systemAudioInput, systemAudioInput.isReadyForMoreMediaData else { return }
             systemAudioInput.append(sampleBuffer)
+
+        case .microphone:
+            break
 
         @unknown default:
             break
