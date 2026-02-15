@@ -49,6 +49,10 @@ For fast validation on pull requests and branch pushes, use `.github/workflows/b
 
 Use `.github/workflows/app-store.yml` to archive and upload the `TinyClipsMAS` build to App Store Connect.
 
+### Xcode Cloud note
+
+If Xcode Cloud has automatic package resolution disabled, commit `TinyClips.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` to the branch being built. Without it, builds fail during dependency resolution with exit code 74.
+
 ### Required GitHub secrets
 
 - `APPLE_TEAM_ID`
