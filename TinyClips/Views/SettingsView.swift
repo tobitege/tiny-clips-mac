@@ -94,6 +94,13 @@ struct SettingsView: View {
 #endif
             Toggle("Copy to clipboard", isOn: $settings.copyToClipboard)
             Toggle("Show in Finder after save", isOn: $settings.showInFinder)
+            Toggle("Show notification after save", isOn: $settings.showSaveNotifications)
+        }
+
+        Section("Advanced") {
+            Button("Reset All Settings to Defaults…") {
+                resetAllSettings()
+            }
         }
 
     }
@@ -287,4 +294,18 @@ struct SettingsView: View {
         settings.saveDirectoryDisplayPath = ""
     }
 #endif
+
+    private func resetAllSettings() {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Reset all settings?"
+            alert.informativeText = "This will restore TinyClips settings to defaults, including onboarding state."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Reset")
+            alert.addButton(withTitle: "Cancel")
+
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            settings.resetToDefaults()
+        }
+    }
 }

@@ -1,4 +1,4 @@
-# TinyClips for macOS
+# Tiny Clips for macOS
 
 [![Build](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml)
 [![Release](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/release.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/release.yml)

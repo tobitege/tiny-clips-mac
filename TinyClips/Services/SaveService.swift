@@ -117,7 +117,9 @@ class SaveService {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
 
-        showNotification(type: type, url: url)
+        if settings.showSaveNotifications {
+            showNotification(type: type, url: url)
+        }
     }
 
     private func copyToClipboard(url: URL, type: CaptureType) {

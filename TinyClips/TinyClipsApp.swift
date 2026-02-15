@@ -86,10 +86,17 @@ class CaptureManager: ObservableObject {
     private var gifTrimmerWindow: GifTrimmerWindow?
     private var screenshotEditorWindow: ScreenshotEditorWindow?
     private var countdownWindow: CountdownWindow?
+    private var onboardingWindow: OnboardingWizardWindow?
+
+    init() {
+        DispatchQueue.main.async { [weak self] in
+            self?.showOnboardingIfNeeded()
+        }
+    }
 
     func takeScreenshot() {
         Task {
-            guard PermissionManager.shared.checkPermission() else { return }
+            guard await PermissionManager.shared.checkPermission() else { return }
             guard let region = await RegionSelector.selectRegion() else { return }
 
             do {
@@ -107,7 +114,7 @@ class CaptureManager: ObservableObject {
 
     func startVideoRecording() {
         Task {
-            guard PermissionManager.shared.checkPermission() else { return }
+            guard await PermissionManager.shared.checkPermission() else { return }
             guard let region = await RegionSelector.selectRegion() else { return }
 
             self.pendingVideoRegion = region
@@ -144,7 +151,7 @@ class CaptureManager: ObservableObject {
 
     func startGifRecording() {
         Task {
-            guard PermissionManager.shared.checkPermission() else { return }
+            guard await PermissionManager.shared.checkPermission() else { return }
             guard let region = await RegionSelector.selectRegion() else { return }
 
             let doRecord = { [weak self] in
@@ -333,5 +340,25 @@ class CaptureManager: ObservableObject {
         }
         self.countdownWindow = window
         window.show()
+    }
+
+    private func showOnboardingIfNeeded() {
+        let settings = CaptureSettings.shared
+        guard !settings.hasCompletedOnboarding, onboardingWindow == nil else { return }
+
+        let window = OnboardingWizardWindow { [weak self] completed in
+            if completed {
+                settings.hasCompletedOnboarding = true
+            }
+            DispatchQueue.main.async {
+                self?.onboardingWindow = nil
+            }
+        }
+        onboardingWindow = window
+
+        DispatchQueue.main.async {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+        }
     }
 }

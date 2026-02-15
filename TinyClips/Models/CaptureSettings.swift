@@ -106,6 +106,7 @@ class CaptureSettings: ObservableObject {
 #endif
     @AppStorage("copyToClipboard") var copyToClipboard: Bool = true
     @AppStorage("showInFinder") var showInFinder: Bool = false
+    @AppStorage("showSaveNotifications") var showSaveNotifications: Bool = false
     @AppStorage("gifFrameRate") var gifFrameRate: Double = 10
     @AppStorage("gifMaxWidth") var gifMaxWidth: Int = 640
     @AppStorage("videoFrameRate") var videoFrameRate: Int = 30
@@ -121,6 +122,7 @@ class CaptureSettings: ObservableObject {
     @AppStorage("videoCountdownDuration") var videoCountdownDuration: Int = 3
     @AppStorage("gifCountdownEnabled") var gifCountdownEnabled: Bool = true
     @AppStorage("gifCountdownDuration") var gifCountdownDuration: Int = 3
+    @AppStorage("hasCompletedOnboarding") var hasCompletedOnboarding: Bool = false
 
 #if APPSTORE
     var hasCustomSaveDirectory: Bool {
@@ -131,5 +133,32 @@ class CaptureSettings: ObservableObject {
     var imageFormat: ImageFormat {
         get { ImageFormat(rawValue: screenshotFormat) ?? .png }
         set { screenshotFormat = newValue.rawValue }
+    }
+
+    func resetToDefaults() {
+        saveDirectory = NSHomeDirectory() + "/Desktop"
+#if APPSTORE
+        saveDirectoryBookmark = Data()
+        saveDirectoryDisplayPath = ""
+#endif
+        copyToClipboard = true
+        showInFinder = false
+        showSaveNotifications = false
+        gifFrameRate = 10
+        gifMaxWidth = 640
+        videoFrameRate = 30
+        showTrimmer = true
+        recordAudio = false
+        recordMicrophone = false
+        showScreenshotEditor = true
+        showGifTrimmer = true
+        screenshotFormat = ImageFormat.png.rawValue
+        screenshotScale = 100
+        jpegQuality = 0.85
+        videoCountdownEnabled = true
+        videoCountdownDuration = 3
+        gifCountdownEnabled = true
+        gifCountdownDuration = 3
+        hasCompletedOnboarding = false
     }
 }

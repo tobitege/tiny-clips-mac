@@ -24,6 +24,7 @@
 		B1000000000000000000000F /* GifTrimmerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* GifTrimmerWindow.swift */; };
 		B10000000000000000000010 /* StartRecordingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* StartRecordingPanel.swift */; };
 		B10000000000000000000011 /* CountdownWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* CountdownWindow.swift */; };
+		B10000000000000000000012 /* OnboardingWizardWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* OnboardingWizardWindow.swift */; };
 		B20000000000000000000001 /* TinyClipsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* TinyClipsApp.swift */; };
 		B20000000000000000000002 /* CaptureSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* CaptureSettings.swift */; };
 		B20000000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* SettingsView.swift */; };
@@ -41,6 +42,7 @@
 		B2000000000000000000000F /* GifTrimmerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* GifTrimmerWindow.swift */; };
 		B20000000000000000000010 /* StartRecordingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* StartRecordingPanel.swift */; };
 		B20000000000000000000011 /* CountdownWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* CountdownWindow.swift */; };
+		B20000000000000000000012 /* OnboardingWizardWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* OnboardingWizardWindow.swift */; };
 		B3EB92CF2F3FCA0B002723CD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B3EB92CE2F3FCA0B002723CD /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -65,6 +67,7 @@
 		A10000000000000000000012 /* GifTrimmerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GifTrimmerWindow.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* StartRecordingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartRecordingPanel.swift; sourceTree = "<group>"; };
 		A10000000000000000000014 /* CountdownWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownWindow.swift; sourceTree = "<group>"; };
+		A10000000000000000000015 /* OnboardingWizardWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWizardWindow.swift; sourceTree = "<group>"; };
 		A2000000000000000000000C /* Info-MAS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-MAS.plist"; sourceTree = "<group>"; };
 		A2000000000000000000000D /* TinyClipsMAS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TinyClipsMAS.entitlements; sourceTree = "<group>"; };
 		A2000000000000000000000E /* TinyClipsMAS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TinyClipsMAS.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -132,6 +135,7 @@
 				A10000000000000000000012 /* GifTrimmerWindow.swift */,
 				A10000000000000000000013 /* StartRecordingPanel.swift */,
 				A10000000000000000000014 /* CountdownWindow.swift */,
+				A10000000000000000000015 /* OnboardingWizardWindow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -283,6 +287,7 @@
 				B1000000000000000000000F /* GifTrimmerWindow.swift in Sources */,
 				B10000000000000000000010 /* StartRecordingPanel.swift in Sources */,
 				B10000000000000000000011 /* CountdownWindow.swift in Sources */,
+				B10000000000000000000012 /* OnboardingWizardWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -306,6 +311,7 @@
 				B2000000000000000000000F /* GifTrimmerWindow.swift in Sources */,
 				B20000000000000000000010 /* StartRecordingPanel.swift in Sources */,
 				B20000000000000000000011 /* CountdownWindow.swift in Sources */,
+				B20000000000000000000012 /* OnboardingWizardWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
