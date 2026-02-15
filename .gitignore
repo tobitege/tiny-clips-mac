@@ -9,5 +9,10 @@ DerivedData/
 .build/
 Packages/
 
+# .NET
+**/bin/
+**/obj/
+.vs/
+
 # macOS
 .DS_Store
