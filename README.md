@@ -1,7 +1,9 @@
 # TinyClips for macOS
 
 [![Build](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build.yml)
+[![Build MAS](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build-mas.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/build-mas.yml)
 [![Release](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/release.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/release.yml)
+[![App Store](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/app-store.yml/badge.svg)](https://github.com/jamesmontemagno/tiny-clips-mac/actions/workflows/app-store.yml)
 [![GitHub release](https://img.shields.io/github/v/release/jamesmontemagno/tiny-clips-mac?style=flat-square)](https://github.com/jamesmontemagno/tiny-clips-mac/releases/latest)
 ![macOS](https://img.shields.io/badge/macOS-15.0+-blue?style=flat-square&logo=apple)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift)
@@ -94,6 +96,19 @@ Sparkle must be added manually via Xcode:
 5. Add the `Sparkle` framework to the `TinyClips` target
 
 See [docs/sparkle-setup.md](docs/sparkle-setup.md) for full setup including key generation and CI/CD secrets.
+
+## App Store Variant
+
+To ship both a direct (Sparkle, non-sandbox) build and a Mac App Store (sandboxed, no Sparkle) build from one codebase, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
+
+### CI/CD
+
+- Direct distribution build validation: `.github/workflows/build.yml`
+- Mac App Store build validation (unsigned CI): `.github/workflows/build-mas.yml`
+- Direct distribution release + Sparkle appcast: `.github/workflows/release.yml`
+- Mac App Store archive + upload pipeline: `.github/workflows/app-store.yml`
+
+For required App Store CI secrets and setup details, see [docs/app-store-variant-setup.md](docs/app-store-variant-setup.md).
 
 ## Architecture
 
