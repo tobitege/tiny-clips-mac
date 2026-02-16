@@ -26,21 +26,23 @@ private struct MenuBarContentView: View {
     @ObservedObject var captureManager: CaptureManager
     @ObservedObject var sparkleController: SparkleController
     @Environment(\.openSettings) private var openSettings
+    @State private var isOptionPressed = false
+    @State private var pollingTimer: Timer?
 
     var body: some View {
         if !captureManager.isRecording {
-            Button("Screenshot") {
-                captureManager.takeScreenshot()
+            Button(screenshotTitle) {
+                captureManager.takeScreenshot(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("5", modifiers: [.command, .shift])
 
-            Button("Record Video") {
-                captureManager.startVideoRecording()
+            Button(recordVideoTitle) {
+                captureManager.startVideoRecording(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("6", modifiers: [.command, .shift])
 
-            Button("Record GIF") {
-                captureManager.startGifRecording()
+            Button(recordGifTitle) {
+                captureManager.startGifRecording(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("7", modifiers: [.command, .shift])
 
@@ -58,6 +60,10 @@ private struct MenuBarContentView: View {
             sparkleController.checkForUpdates()
         }
 #endif
+        Button("Guide…") {
+            captureManager.showGuide()
+        }
+
         Button("Settings…") {
             openSettings()
             NSApp.activate()
@@ -70,6 +76,39 @@ private struct MenuBarContentView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+        .onAppear {
+            updateModifierState()
+            let timer = Timer(timeInterval: 0.1, repeats: true) { _ in
+                DispatchQueue.main.async {
+                    updateModifierState()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            pollingTimer = timer
+        }
+        .onDisappear {
+            pollingTimer?.invalidate()
+            pollingTimer = nil
+        }
+    }
+
+    private var screenshotTitle: String {
+        isOptionPressed ? "Screenshot (Full Screen)" : "Screenshot"
+    }
+
+    private var recordVideoTitle: String {
+        isOptionPressed ? "Record Video (Full Screen)" : "Record Video"
+    }
+
+    private var recordGifTitle: String {
+        isOptionPressed ? "Record GIF (Full Screen)" : "Record GIF"
+    }
+
+    private func updateModifierState() {
+        let hasOption = NSEvent.modifierFlags.contains(.option)
+        if hasOption != isOptionPressed {
+            isOptionPressed = hasOption
+        }
     }
 }
 
@@ -87,6 +126,7 @@ class CaptureManager: ObservableObject {
     private var screenshotEditorWindow: ScreenshotEditorWindow?
     private var countdownWindow: CountdownWindow?
     private var onboardingWindow: OnboardingWizardWindow?
+    private var guideWindow: GuideWindow?
 
     init() {
         DispatchQueue.main.async { [weak self] in
@@ -94,10 +134,10 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func takeScreenshot() {
+    func takeScreenshot(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             do {
                 let url = try await ScreenshotCapture.capture(region: region)
@@ -112,10 +152,10 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func startVideoRecording() {
+    func startVideoRecording(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             self.pendingVideoRegion = region
             showStartPanel()
@@ -149,10 +189,10 @@ class CaptureManager: ObservableObject {
         showCountdownThen(for: .video, action: doRecord)
     }
 
-    func startGifRecording() {
+    func startGifRecording(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             let doRecord = { [weak self] in
                 guard let self else { return }
@@ -360,5 +400,43 @@ class CaptureManager: ObservableObject {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
         }
+    }
+
+    func showGuide() {
+        if let guideWindow {
+            DispatchQueue.main.async {
+                guideWindow.makeKeyAndOrderFront(nil)
+                NSApp.activate()
+            }
+            return
+        }
+
+        let window = GuideWindow(onDismiss: { [weak self] in
+            DispatchQueue.main.async {
+                self?.guideWindow = nil
+            }
+        })
+
+        self.guideWindow = window
+        DispatchQueue.main.async {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+        }
+    }
+
+    private func chooseCaptureRegion(useFullScreen: Bool) async -> CaptureRegion? {
+        if useFullScreen {
+            guard let screen = screenUnderMouseCursor() ?? NSScreen.main else {
+                return nil
+            }
+            return CaptureRegion.fullScreen(for: screen)
+        }
+
+        return await RegionSelector.selectRegion()
+    }
+
+    private func screenUnderMouseCursor() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
     }
 }

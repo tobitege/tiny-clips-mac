@@ -11,6 +11,18 @@ struct CaptureRegion: Sendable {
     let displayID: CGDirectDisplayID
     let scaleFactor: CGFloat
 
+    static func fullScreen(for screen: NSScreen) -> CaptureRegion? {
+        guard let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
+            return nil
+        }
+
+        return CaptureRegion(
+            sourceRect: CGRect(x: 0, y: 0, width: screen.frame.width, height: screen.frame.height),
+            displayID: displayID,
+            scaleFactor: screen.backingScaleFactor
+        )
+    }
+
     func makeStreamConfig() -> SCStreamConfiguration {
         let config = SCStreamConfiguration()
         config.sourceRect = sourceRect

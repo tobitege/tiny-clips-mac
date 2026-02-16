@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.0.12 - 2026-02-15
+
+### Added
+- Full-screen capture override by holding Option when starting Screenshot, Video, or GIF capture.
+- New Guide window from the menu bar with usage help and shortcut documentation.
+
+### Improved
+- Menu bar capture labels now update live while Option is held to clearly indicate full-screen capture mode.
+- Guide UI refreshed with segmented sections, improved spacing, and clearer content grouping.
+- Guide window sizing refined to reduce excessive vertical space.
+- Video and GIF trimmer windows are now resizable for larger capture regions.
+
+### Fixed
+- Removed fixed-size constraints from Video and GIF trimmer views so window resizing works correctly.
+
 ## v0.0.11 - 2026-02-15
 
 ### Added

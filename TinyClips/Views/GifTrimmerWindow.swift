@@ -19,7 +19,7 @@ class GifTrimmerWindow: NSWindow, NSWindowDelegate {
     convenience init(gifData: GifCaptureData, outputURL: URL, onComplete: @escaping (URL?) -> Void) {
         self.init(
             contentRect: NSRect(x: 0, y: 0, width: 580, height: 460),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -27,6 +27,7 @@ class GifTrimmerWindow: NSWindow, NSWindowDelegate {
         self.title = "Trim GIF"
         self.isReleasedWhenClosed = false
         self.delegate = self
+        self.minSize = NSSize(width: 560, height: 420)
         self.center()
 
         let trimmerView = GifTrimmerView(gifData: gifData, outputURL: outputURL) { [weak self] resultURL in
@@ -155,7 +156,7 @@ private struct GifTrimmerView: View {
             }
             .padding()
         }
-        .frame(width: 580, height: 460)
+        .frame(minWidth: 560, minHeight: 420)
     }
 }
 
