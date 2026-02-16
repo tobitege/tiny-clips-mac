@@ -26,20 +26,23 @@ private struct MenuBarContentView: View {
     @ObservedObject var captureManager: CaptureManager
     @ObservedObject var sparkleController: SparkleController
     @Environment(\.openSettings) private var openSettings
+    @State private var isOptionPressed = false
+
+    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         if !captureManager.isRecording {
-            Button("Screenshot") {
+            Button(screenshotTitle) {
                 captureManager.takeScreenshot()
             }
             .keyboardShortcut("5", modifiers: [.command, .shift])
 
-            Button("Record Video") {
+            Button(recordVideoTitle) {
                 captureManager.startVideoRecording()
             }
             .keyboardShortcut("6", modifiers: [.command, .shift])
 
-            Button("Record GIF") {
+            Button(recordGifTitle) {
                 captureManager.startGifRecording()
             }
             .keyboardShortcut("7", modifiers: [.command, .shift])
@@ -58,6 +61,10 @@ private struct MenuBarContentView: View {
             sparkleController.checkForUpdates()
         }
 #endif
+        Button("Guide…") {
+            captureManager.showGuide()
+        }
+
         Button("Settings…") {
             openSettings()
             NSApp.activate()
@@ -70,6 +77,31 @@ private struct MenuBarContentView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+        .onAppear {
+            updateModifierState()
+        }
+        .onReceive(modifierPollingTimer) { _ in
+            updateModifierState()
+        }
+    }
+
+    private var screenshotTitle: String {
+        isOptionPressed ? "Screenshot (Full Screen)" : "Screenshot"
+    }
+
+    private var recordVideoTitle: String {
+        isOptionPressed ? "Record Video (Full Screen)" : "Record Video"
+    }
+
+    private var recordGifTitle: String {
+        isOptionPressed ? "Record GIF (Full Screen)" : "Record GIF"
+    }
+
+    private func updateModifierState() {
+        let hasOption = NSEvent.modifierFlags.contains(.option)
+        if hasOption != isOptionPressed {
+            isOptionPressed = hasOption
+        }
     }
 }
 
@@ -87,6 +119,7 @@ class CaptureManager: ObservableObject {
     private var screenshotEditorWindow: ScreenshotEditorWindow?
     private var countdownWindow: CountdownWindow?
     private var onboardingWindow: OnboardingWizardWindow?
+    private var guideWindow: GuideWindow?
 
     init() {
         DispatchQueue.main.async { [weak self] in
@@ -97,7 +130,7 @@ class CaptureManager: ObservableObject {
     func takeScreenshot() {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion() else { return }
 
             do {
                 let url = try await ScreenshotCapture.capture(region: region)
@@ -115,7 +148,7 @@ class CaptureManager: ObservableObject {
     func startVideoRecording() {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion() else { return }
 
             self.pendingVideoRegion = region
             showStartPanel()
@@ -152,7 +185,7 @@ class CaptureManager: ObservableObject {
     func startGifRecording() {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await RegionSelector.selectRegion() else { return }
+            guard let region = await chooseCaptureRegion() else { return }
 
             let doRecord = { [weak self] in
                 guard let self else { return }
@@ -360,5 +393,50 @@ class CaptureManager: ObservableObject {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
         }
+    }
+
+    func showGuide() {
+        if let guideWindow {
+            DispatchQueue.main.async {
+                guideWindow.makeKeyAndOrderFront(nil)
+                NSApp.activate()
+            }
+            return
+        }
+
+        let window = GuideWindow { [weak self] in
+            DispatchQueue.main.async {
+                self?.guideWindow = nil
+            }
+        }
+
+        self.guideWindow = window
+        DispatchQueue.main.async {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+        }
+    }
+
+    private func chooseCaptureRegion() async -> CaptureRegion? {
+        if shouldUseFullScreenOverride() {
+            guard let screen = screenUnderMouseCursor() ?? NSScreen.main else {
+                return nil
+            }
+            return CaptureRegion.fullScreen(for: screen)
+        }
+
+        return await RegionSelector.selectRegion()
+    }
+
+    private func shouldUseFullScreenOverride() -> Bool {
+        if let event = NSApp.currentEvent {
+            return event.modifierFlags.contains(.option)
+        }
+        return NSEvent.modifierFlags.contains(.option)
+    }
+
+    private func screenUnderMouseCursor() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
     }
 }
