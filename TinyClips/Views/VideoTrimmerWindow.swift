@@ -10,7 +10,7 @@ class VideoTrimmerWindow: NSWindow, NSWindowDelegate {
     convenience init(videoURL: URL, onComplete: @escaping (URL?) -> Void) {
         self.init(
             contentRect: NSRect(x: 0, y: 0, width: 580, height: 460),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -18,6 +18,7 @@ class VideoTrimmerWindow: NSWindow, NSWindowDelegate {
         self.title = "Trim Video"
         self.isReleasedWhenClosed = false
         self.delegate = self
+        self.minSize = NSSize(width: 560, height: 420)
         self.center()
 
         let trimmerView = VideoTrimmerView(videoURL: videoURL) { [weak self] resultURL in
@@ -138,7 +139,7 @@ private struct VideoTrimmerView: View {
             }
             .padding()
         }
-        .frame(width: 580, height: 460)
+        .frame(minWidth: 560, minHeight: 420)
     }
 
     private func formatTime(_ seconds: Double) -> String {
