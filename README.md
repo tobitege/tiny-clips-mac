@@ -9,7 +9,9 @@
 
 A lightweight macOS menu bar app for capturing screenshots (PNG), video (MP4), and animated GIFs of a selected screen region.
 
-![tiny-clips-promo](https://github.com/user-attachments/assets/6d133d99-3d14-443e-a123-a355fd29c5f1)
+
+![tiny-clips-promo (1)](https://github.com/user-attachments/assets/0afc2c8a-a83b-4703-9873-b4fb0c315c06)
+
 
 ## Features
 
