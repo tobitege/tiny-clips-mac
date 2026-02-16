@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 @main
 struct TinyClipsApp: App {
@@ -28,71 +27,61 @@ private struct MenuBarContentView: View {
     @ObservedObject var sparkleController: SparkleController
     @Environment(\.openSettings) private var openSettings
     @State private var isOptionPressed = false
-    @State private var modifierPollingConnection: Cancellable?
 
-    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common)
+    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        Group {
-            if !captureManager.isRecording {
-                Button(screenshotTitle) {
-                    captureManager.takeScreenshot(useFullScreenOverride: isOptionPressed)
-                }
-                .keyboardShortcut("5", modifiers: [.command, .shift])
-
-                Button(recordVideoTitle) {
-                    captureManager.startVideoRecording(useFullScreenOverride: isOptionPressed)
-                }
-                .keyboardShortcut("6", modifiers: [.command, .shift])
-
-                Button(recordGifTitle) {
-                    captureManager.startGifRecording(useFullScreenOverride: isOptionPressed)
-                }
-                .keyboardShortcut("7", modifiers: [.command, .shift])
-
-                Divider()
-            } else {
-                Button("Stop Recording") {
-                    captureManager.stopRecording()
-                }
-                .keyboardShortcut(".", modifiers: .command)
-
-                Divider()
+        if !captureManager.isRecording {
+            Button(screenshotTitle) {
+                captureManager.takeScreenshot()
             }
-#if !APPSTORE
-            Button("Check for Updates\u{2026}") {
-                sparkleController.checkForUpdates()
-            }
-#endif
-            Button("Guide…") {
-                captureManager.showGuide()
-            }
+            .keyboardShortcut("5", modifiers: [.command, .shift])
 
-            Button("Settings…") {
-                openSettings()
-                NSApp.activate()
+            Button(recordVideoTitle) {
+                captureManager.startVideoRecording()
             }
-            .keyboardShortcut(",", modifiers: .command)
+            .keyboardShortcut("6", modifiers: [.command, .shift])
+
+            Button(recordGifTitle) {
+                captureManager.startGifRecording()
+            }
+            .keyboardShortcut("7", modifiers: [.command, .shift])
 
             Divider()
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
+        } else {
+            Button("Stop Recording") {
+                captureManager.stopRecording()
             }
-            .keyboardShortcut("q", modifiers: .command)
+            .keyboardShortcut(".", modifiers: .command)
+
+            Divider()
         }
+#if !APPSTORE
+        Button("Check for Updates\u{2026}") {
+            sparkleController.checkForUpdates()
+        }
+#endif
+        Button("Guide…") {
+            captureManager.showGuide()
+        }
+
+        Button("Settings…") {
+            openSettings()
+            NSApp.activate()
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        Divider()
+
+        Button("Quit") {
+            NSApplication.shared.terminate(nil)
+        }
+        .keyboardShortcut("q", modifiers: .command)
         .onAppear {
             updateModifierState()
-            if modifierPollingConnection == nil {
-                modifierPollingConnection = modifierPollingTimer.connect()
-            }
         }
         .onReceive(modifierPollingTimer) { _ in
             updateModifierState()
-        }
-        .onDisappear {
-            modifierPollingConnection?.cancel()
-            modifierPollingConnection = nil
         }
     }
 
@@ -434,29 +423,20 @@ class CaptureManager: ObservableObject {
     private func chooseCaptureRegion(useFullScreenOverride: Bool) async -> CaptureRegion? {
         if useFullScreenOverride {
             guard let screen = screenUnderMouseCursor() ?? NSScreen.main else {
-                SaveService.shared.showError("Unable to start full-screen capture because no display is currently available.")
                 return nil
             }
-            guard let region = CaptureRegion.fullScreen(for: screen) else {
-                SaveService.shared.showError("Unable to start full-screen capture for the selected display.")
-                return nil
-            }
-            return region
+            return CaptureRegion.fullScreen(for: screen)
         }
 
         return await RegionSelector.selectRegion()
     }
 
     private func shouldUseFullScreenOverride() -> Bool {
-        if NSEvent.modifierFlags.contains(.option) {
-            return true
-        }
-
         if let event = NSApp.currentEvent {
             return event.modifierFlags.contains(.option)
         }
 
-        return false
+        return NSEvent.modifierFlags.contains(.option)
     }
 
     private func screenUnderMouseCursor() -> NSScreen? {
