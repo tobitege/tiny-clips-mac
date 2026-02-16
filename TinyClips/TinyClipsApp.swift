@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @main
 struct TinyClipsApp: App {
@@ -27,61 +28,71 @@ private struct MenuBarContentView: View {
     @ObservedObject var sparkleController: SparkleController
     @Environment(\.openSettings) private var openSettings
     @State private var isOptionPressed = false
+    @State private var modifierPollingConnection: Cancellable?
 
-    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common)
 
     var body: some View {
-        if !captureManager.isRecording {
-            Button(screenshotTitle) {
-                captureManager.takeScreenshot()
-            }
-            .keyboardShortcut("5", modifiers: [.command, .shift])
+        Group {
+            if !captureManager.isRecording {
+                Button(screenshotTitle) {
+                    captureManager.takeScreenshot(useFullScreenOverride: isOptionPressed)
+                }
+                .keyboardShortcut("5", modifiers: [.command, .shift])
 
-            Button(recordVideoTitle) {
-                captureManager.startVideoRecording()
-            }
-            .keyboardShortcut("6", modifiers: [.command, .shift])
+                Button(recordVideoTitle) {
+                    captureManager.startVideoRecording(useFullScreenOverride: isOptionPressed)
+                }
+                .keyboardShortcut("6", modifiers: [.command, .shift])
 
-            Button(recordGifTitle) {
-                captureManager.startGifRecording()
-            }
-            .keyboardShortcut("7", modifiers: [.command, .shift])
+                Button(recordGifTitle) {
+                    captureManager.startGifRecording(useFullScreenOverride: isOptionPressed)
+                }
+                .keyboardShortcut("7", modifiers: [.command, .shift])
 
-            Divider()
-        } else {
-            Button("Stop Recording") {
-                captureManager.stopRecording()
-            }
-            .keyboardShortcut(".", modifiers: .command)
+                Divider()
+            } else {
+                Button("Stop Recording") {
+                    captureManager.stopRecording()
+                }
+                .keyboardShortcut(".", modifiers: .command)
 
-            Divider()
-        }
+                Divider()
+            }
 #if !APPSTORE
-        Button("Check for Updates\u{2026}") {
-            sparkleController.checkForUpdates()
-        }
+            Button("Check for Updates\u{2026}") {
+                sparkleController.checkForUpdates()
+            }
 #endif
-        Button("Guide…") {
-            captureManager.showGuide()
-        }
+            Button("Guide…") {
+                captureManager.showGuide()
+            }
 
-        Button("Settings…") {
-            openSettings()
-            NSApp.activate()
-        }
-        .keyboardShortcut(",", modifiers: .command)
+            Button("Settings…") {
+                openSettings()
+                NSApp.activate()
+            }
+            .keyboardShortcut(",", modifiers: .command)
 
-        Divider()
+            Divider()
 
-        Button("Quit") {
-            NSApplication.shared.terminate(nil)
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q", modifiers: .command)
         }
-        .keyboardShortcut("q", modifiers: .command)
         .onAppear {
             updateModifierState()
+            if modifierPollingConnection == nil {
+                modifierPollingConnection = modifierPollingTimer.connect()
+            }
         }
         .onReceive(modifierPollingTimer) { _ in
             updateModifierState()
+        }
+        .onDisappear {
+            modifierPollingConnection?.cancel()
+            modifierPollingConnection = nil
         }
     }
 
@@ -127,10 +138,11 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func takeScreenshot() {
+    func takeScreenshot(useFullScreenOverride: Bool? = nil) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await chooseCaptureRegion() else { return }
+            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
+            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
 
             do {
                 let url = try await ScreenshotCapture.capture(region: region)
@@ -145,10 +157,11 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func startVideoRecording() {
+    func startVideoRecording(useFullScreenOverride: Bool? = nil) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await chooseCaptureRegion() else { return }
+            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
+            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
 
             self.pendingVideoRegion = region
             showStartPanel()
@@ -182,10 +195,11 @@ class CaptureManager: ObservableObject {
         showCountdownThen(for: .video, action: doRecord)
     }
 
-    func startGifRecording() {
+    func startGifRecording(useFullScreenOverride: Bool? = nil) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            guard let region = await chooseCaptureRegion() else { return }
+            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
+            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
 
             let doRecord = { [weak self] in
                 guard let self else { return }
@@ -417,22 +431,32 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    private func chooseCaptureRegion() async -> CaptureRegion? {
-        if shouldUseFullScreenOverride() {
+    private func chooseCaptureRegion(useFullScreenOverride: Bool) async -> CaptureRegion? {
+        if useFullScreenOverride {
             guard let screen = screenUnderMouseCursor() ?? NSScreen.main else {
+                SaveService.shared.showError("Unable to start full-screen capture because no display is currently available.")
                 return nil
             }
-            return CaptureRegion.fullScreen(for: screen)
+            guard let region = CaptureRegion.fullScreen(for: screen) else {
+                SaveService.shared.showError("Unable to start full-screen capture for the selected display.")
+                return nil
+            }
+            return region
         }
 
         return await RegionSelector.selectRegion()
     }
 
     private func shouldUseFullScreenOverride() -> Bool {
+        if NSEvent.modifierFlags.contains(.option) {
+            return true
+        }
+
         if let event = NSApp.currentEvent {
             return event.modifierFlags.contains(.option)
         }
-        return NSEvent.modifierFlags.contains(.option)
+
+        return false
     }
 
     private func screenUnderMouseCursor() -> NSScreen? {
