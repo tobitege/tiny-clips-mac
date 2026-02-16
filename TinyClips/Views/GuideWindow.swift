@@ -3,10 +3,10 @@ import SwiftUI
 
 @MainActor
 class GuideWindow: NSWindow, NSWindowDelegate {
-    private var onClose: (() -> Void)?
+    private var onDismiss: (() -> Void)?
     private var didClose = false
 
-    convenience init(onClose: @escaping () -> Void) {
+    convenience init(onDismiss: @escaping () -> Void) {
         self.init(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 420),
             styleMask: [.titled, .closable, .miniaturizable],
@@ -14,7 +14,7 @@ class GuideWindow: NSWindow, NSWindowDelegate {
             defer: false
         )
 
-        self.onClose = onClose
+        self.onDismiss = onDismiss
         self.delegate = self
         self.isReleasedWhenClosed = false
         self.title = "TinyClips Guide"
@@ -25,8 +25,8 @@ class GuideWindow: NSWindow, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard !didClose else { return }
         didClose = true
-        onClose?()
-        onClose = nil
+        onDismiss?()
+        onDismiss = nil
     }
 }
 
@@ -50,9 +50,8 @@ private struct GuideWindowView: View {
             }
         }
         .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: 560, height: 420, alignment: .topLeading)
         .background(.background)
-        .frame(width: 560, height: 420)
     }
 
     private var header: some View {

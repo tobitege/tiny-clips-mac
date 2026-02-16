@@ -27,23 +27,22 @@ private struct MenuBarContentView: View {
     @ObservedObject var sparkleController: SparkleController
     @Environment(\.openSettings) private var openSettings
     @State private var isOptionPressed = false
-
-    private let modifierPollingTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    @State private var pollingTimer: Timer?
 
     var body: some View {
         if !captureManager.isRecording {
             Button(screenshotTitle) {
-                captureManager.takeScreenshot()
+                captureManager.takeScreenshot(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("5", modifiers: [.command, .shift])
 
             Button(recordVideoTitle) {
-                captureManager.startVideoRecording()
+                captureManager.startVideoRecording(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("6", modifiers: [.command, .shift])
 
             Button(recordGifTitle) {
-                captureManager.startGifRecording()
+                captureManager.startGifRecording(useFullScreen: isOptionPressed)
             }
             .keyboardShortcut("7", modifiers: [.command, .shift])
 
@@ -79,9 +78,17 @@ private struct MenuBarContentView: View {
         .keyboardShortcut("q", modifiers: .command)
         .onAppear {
             updateModifierState()
+            let timer = Timer(timeInterval: 0.1, repeats: true) { _ in
+                DispatchQueue.main.async {
+                    updateModifierState()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            pollingTimer = timer
         }
-        .onReceive(modifierPollingTimer) { _ in
-            updateModifierState()
+        .onDisappear {
+            pollingTimer?.invalidate()
+            pollingTimer = nil
         }
     }
 
@@ -127,11 +134,10 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func takeScreenshot(useFullScreenOverride: Bool? = nil) {
+    func takeScreenshot(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
-            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             do {
                 let url = try await ScreenshotCapture.capture(region: region)
@@ -146,11 +152,10 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    func startVideoRecording(useFullScreenOverride: Bool? = nil) {
+    func startVideoRecording(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
-            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             self.pendingVideoRegion = region
             showStartPanel()
@@ -184,11 +189,10 @@ class CaptureManager: ObservableObject {
         showCountdownThen(for: .video, action: doRecord)
     }
 
-    func startGifRecording(useFullScreenOverride: Bool? = nil) {
+    func startGifRecording(useFullScreen: Bool = false) {
         Task {
             guard await PermissionManager.shared.checkPermission() else { return }
-            let shouldUseFullScreen = useFullScreenOverride ?? shouldUseFullScreenOverride()
-            guard let region = await chooseCaptureRegion(useFullScreenOverride: shouldUseFullScreen) else { return }
+            guard let region = await chooseCaptureRegion(useFullScreen: useFullScreen) else { return }
 
             let doRecord = { [weak self] in
                 guard let self else { return }
@@ -407,11 +411,11 @@ class CaptureManager: ObservableObject {
             return
         }
 
-        let window = GuideWindow { [weak self] in
+        let window = GuideWindow(onDismiss: { [weak self] in
             DispatchQueue.main.async {
                 self?.guideWindow = nil
             }
-        }
+        })
 
         self.guideWindow = window
         DispatchQueue.main.async {
@@ -420,8 +424,8 @@ class CaptureManager: ObservableObject {
         }
     }
 
-    private func chooseCaptureRegion(useFullScreenOverride: Bool) async -> CaptureRegion? {
-        if useFullScreenOverride {
+    private func chooseCaptureRegion(useFullScreen: Bool) async -> CaptureRegion? {
+        if useFullScreen {
             guard let screen = screenUnderMouseCursor() ?? NSScreen.main else {
                 return nil
             }
@@ -429,14 +433,6 @@ class CaptureManager: ObservableObject {
         }
 
         return await RegionSelector.selectRegion()
-    }
-
-    private func shouldUseFullScreenOverride() -> Bool {
-        if let event = NSApp.currentEvent {
-            return event.modifierFlags.contains(.option)
-        }
-
-        return NSEvent.modifierFlags.contains(.option)
     }
 
     private func screenUnderMouseCursor() -> NSScreen? {
